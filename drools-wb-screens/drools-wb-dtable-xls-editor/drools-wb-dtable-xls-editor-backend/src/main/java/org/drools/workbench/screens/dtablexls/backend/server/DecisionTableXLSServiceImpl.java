@@ -73,7 +73,6 @@ public class DecisionTableXLSServiceImpl
 
     private static final Logger log = LoggerFactory.getLogger( DecisionTableXLSServiceImpl.class );
 
-    private IOService ioService;
     private CopyService copyService;
     private DeleteService deleteService;
     private RenameService renameService;
@@ -108,11 +107,6 @@ public class DecisionTableXLSServiceImpl
     }
 
     @Override
-    public DecisionTableXLSContent loadContent( final Path path ) {
-        return super.loadContent( path );
-    }
-
-    @Override
     protected DecisionTableXLSContent constructContent( Path path,
                                                         Overview overview ) {
         final DecisionTableXLSContent content = new DecisionTableXLSContent();
@@ -123,9 +117,8 @@ public class DecisionTableXLSServiceImpl
     @Override
     public InputStream load( final Path path,
                              final String sessionId ) {
-        try {
-            final InputStream inputStream = ioService.newInputStream( Paths.convert( path ),
-                                                                      StandardOpenOption.READ );
+        try (final InputStream inputStream = ioService.newInputStream( Paths.convert( path ),
+                                                                       StandardOpenOption.READ )) {
 
             //Signal opening to interested parties
             resourceOpenedEvent.fire( new ResourceOpenedEvent( path,
@@ -173,11 +166,12 @@ public class DecisionTableXLSServiceImpl
         }
         log.info( "USER:" + sessionInfo.getIdentity().getIdentifier() + " " + userAction + " asset [" + resource.getFileName() + "]" );
 
+        File tempFile = createTempFile( "testxls", null );
+
         FileInputStream tempFIS = null;
         FileOutputStream tempFOS = null;
         OutputStream outputStream = null;
         try {
-            File tempFile = File.createTempFile( "testxls", null );
             tempFOS = new FileOutputStream( tempFile );
             IOUtils.copy( content, tempFOS );
             tempFOS.flush();
@@ -203,17 +197,10 @@ public class DecisionTableXLSServiceImpl
             outputStream.flush();
 
             //Read Path to ensure attributes have been set
-            final Path newPath = Paths.convert( nioPath );
-
-            return newPath;
+            return Paths.convert( nioPath );
         } catch ( Exception e ) {
             throw ExceptionUtilities.handleException( e );
         } finally {
-            try {
-                content.close();
-            } catch ( IOException e ) {
-                throw ExceptionUtilities.handleException( e );
-            }
             if ( tempFIS != null ) {
                 try {
                     tempFIS.close();
@@ -238,47 +225,34 @@ public class DecisionTableXLSServiceImpl
         }
     }
 
-    void validate( final File tempFile ) {
-        Workbook workbook = null;
+    private File createTempFile(String prefix, String suffix) {
         try {
-            workbook = WorkbookFactory.create( tempFile );
+            return File.createTempFile( prefix, suffix);
+        } catch (IOException e) {
+            throw ExceptionUtilities.handleException( e );
+        }
+    }
+
+    void validate( final File tempFile ) {
+        try (Workbook ignored = WorkbookFactory.create( tempFile )) {
+            // Using try-catch to validate
         } catch ( IOException e ) {
             throw new DecisionTableParseException( "DecisionTableParseException: Failed to open Excel stream, " + "please check that the content is xls97 format.",
                                                    e );
-        } catch ( Throwable e ) {
+        } catch ( Exception e ) {
             throw new DecisionTableParseException( "DecisionTableParseException: " + e.getMessage(),
                                                    e );
-        } finally {
-            if ( workbook != null ) {
-                try {
-                    workbook.close();
-                } catch ( IOException e ) {
-                    throw ExceptionUtilities.handleException( e );
-                }
-            }
         }
     }
 
     @Override
     public String getSource( final Path path ) {
-        InputStream inputStream = null;
-        try {
-            final SpreadsheetCompiler compiler = new SpreadsheetCompiler();
-            inputStream = ioService.newInputStream( Paths.convert( path ),
-                                                    StandardOpenOption.READ );
-            final String drl = compiler.compile( inputStream,
-                                                 InputType.XLS );
-            return drl;
+        try (InputStream inputStream = ioService.newInputStream( Paths.convert( path ),
+                            StandardOpenOption.READ )) {
+            return new SpreadsheetCompiler().compile( inputStream,
+                                                      InputType.XLS );
         } catch ( Exception e ) {
             throw new SourceGenerationFailedException( e.getMessage() );
-        } finally {
-            if ( inputStream != null ) {
-                try {
-                    inputStream.close();
-                } catch ( IOException ioe ) {
-                    throw ExceptionUtilities.handleException( ioe );
-                }
-            }
         }
     }
 
