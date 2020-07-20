@@ -182,6 +182,10 @@ public class DecisionTableXLSServiceImpl
             //Validate the xls
             validate( tempFile );
 
+            //InputStream 'content' has been fully read to write to the temp file; so we need to use a new InputStream
+            //An alternative is to check for content.markSupported() and reset() however since we have a temporary
+            //file we may as well use it!
+            tempFIS = new FileInputStream( tempFile );
             IOUtils.copy( tempFIS,
                           outputStream );
             outputStream.flush();
