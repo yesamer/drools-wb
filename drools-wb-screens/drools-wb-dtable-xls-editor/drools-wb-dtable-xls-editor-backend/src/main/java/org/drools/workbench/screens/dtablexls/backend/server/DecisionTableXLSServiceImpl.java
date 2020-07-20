@@ -160,38 +160,28 @@ public class DecisionTableXLSServiceImpl
                               final String comment,
                               boolean create ) {
         final SessionInfo sessionInfo = getSessionInfo( sessionId );
-        String userAction = "UPDATING";
-        if ( create ) {
-            userAction = "CREATING";
-        }
-        log.info( "USER:" + sessionInfo.getIdentity().getIdentifier() + " " + userAction + " asset [" + resource.getFileName() + "]" );
+
+        log.info("USER: {} {} asset [{}]", sessionInfo.getIdentity().getIdentifier(), create ? "CREATING" : "UPDATING", resource.getFileName());
 
         File tempFile = createTempFile( "testxls", null );
 
+        final org.uberfire.java.nio.file.Path nioPath = Paths.convert( resource );
+        if ( create ) {
+            ioService.createFile( nioPath );
+        }
+
         FileInputStream tempFIS = null;
-        FileOutputStream tempFOS = null;
-        OutputStream outputStream = null;
-        try {
-            tempFOS = new FileOutputStream( tempFile );
+        try (FileOutputStream tempFOS = new FileOutputStream( tempFile );
+             OutputStream outputStream = ioService.newOutputStream( nioPath,
+                                                                    commentedOptionFactory.makeCommentedOption( comment,
+                                                                                                                sessionInfo.getIdentity(),
+                                                                                                                sessionInfo ) ) ) {
             IOUtils.copy( content, tempFOS );
             tempFOS.flush();
 
             //Validate the xls
             validate( tempFile );
 
-            final org.uberfire.java.nio.file.Path nioPath = Paths.convert( resource );
-            if ( create ) {
-                ioService.createFile( nioPath );
-            }
-            outputStream = ioService.newOutputStream( nioPath,
-                                                      commentedOptionFactory.makeCommentedOption( comment,
-                                                                                                  sessionInfo.getIdentity(),
-                                                                                                  sessionInfo ) );
-
-            //InputStream 'content' has been fully read to write to the temp file; so we need to use a new InputStream
-            //An alternative is to check for content.markSupported() and reset() however since we have a temporary
-            //file we may as well use it!
-            tempFIS = new FileInputStream( tempFile );
             IOUtils.copy( tempFIS,
                           outputStream );
             outputStream.flush();
@@ -204,20 +194,6 @@ public class DecisionTableXLSServiceImpl
             if ( tempFIS != null ) {
                 try {
                     tempFIS.close();
-                } catch ( IOException e ) {
-                    throw ExceptionUtilities.handleException( e );
-                }
-            }
-            if ( tempFOS != null ) {
-                try {
-                    tempFOS.close();
-                } catch ( IOException e ) {
-                    throw ExceptionUtilities.handleException( e );
-                }
-            }
-            if ( outputStream != null ) {
-                try {
-                    outputStream.close();
                 } catch ( IOException e ) {
                     throw ExceptionUtilities.handleException( e );
                 }

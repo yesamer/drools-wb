@@ -137,11 +137,8 @@ public class ScoreCardXLSServiceImpl
                               final String comment,
                               boolean create ) {
         final SessionInfo sessionInfo = getSessionInfo( sessionId );
-        String userAction = "UPDATING";
-        if ( create ) {
-            userAction = "CREATING";
-        }
-        log.info( "USER:" + sessionInfo.getIdentity().getIdentifier() + " " + userAction + " asset [" + resource.getFileName() + "]" );
+
+        log.info("USER: {} {} asset [{}]", sessionInfo.getIdentity().getIdentifier(), create ? "CREATING" : "UPDATING", resource.getFileName());
 
         final org.uberfire.java.nio.file.Path nioPath = Paths.convert( resource );
         if ( create ) {
