@@ -32,8 +32,6 @@ public class DTCellValueUtilities {
 
     private static final String DATE_FORMAT = ApplicationPreferences.getDroolsDateFormat();
 
-    private static final SimpleDateFormat FORMATTER = new SimpleDateFormat(DATE_FORMAT);
-
     /**
      * Callback to record data-type conversion errors.
      */
@@ -127,7 +125,7 @@ public class DTCellValueUtilities {
                 Date d = null;
                 try {
                     if (!(text == null || text.isEmpty())) {
-                        d = FORMATTER.parse(stripQuotes(text));
+                        d = new SimpleDateFormat(DATE_FORMAT).parse(stripQuotes(text));
                     }
                 } catch (ParseException e) {
                     callback.onConversionError(text,

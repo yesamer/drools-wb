@@ -70,7 +70,7 @@ public class ScenarioEditorPresenter
 
     public static final String IDENTIFIER = "ScenarioEditorPresenter";
 
-    private final TestScenarioResourceType type;
+    private final TestScenarioResourceType testScenarioResourceType;
     private final ScenarioEditorView view;
     private final Caller<ScenarioTestEditorService> service;
     private final AsyncPackageDataModelOracleFactory oracleFactory;
@@ -94,7 +94,7 @@ public class ScenarioEditorPresenter
                                    final User user,
                                    final ImportsWidgetPresenter importsWidget,
                                    final Caller<ScenarioTestEditorService> service,
-                                   final TestScenarioResourceType type,
+                                   final TestScenarioResourceType testScenarioResourceType,
                                    final AsyncPackageDataModelOracleFactory oracleFactory,
                                    final SettingsPage settingsPage,
                                    final AuditPage auditPage,
@@ -107,7 +107,7 @@ public class ScenarioEditorPresenter
         this.user = user;
         this.importsWidget = importsWidget;
         this.service = service;
-        this.type = type;
+        this.testScenarioResourceType = testScenarioResourceType;
         this.oracleFactory = oracleFactory;
         this.settingsPage = settingsPage;
         this.auditPage = auditPage;
@@ -124,7 +124,7 @@ public class ScenarioEditorPresenter
                           final PlaceRequest place) {
         super.init(path,
                    place,
-                   type);
+                   testScenarioResourceType);
 
         testRunnerReportingPanel.reset();
     }
@@ -160,9 +160,7 @@ public class ScenarioEditorPresenter
     }
 
     private RemoteCallback<TestScenarioModelContent> getModelSuccessCallback() {
-        return new RemoteCallback<TestScenarioModelContent>() {
-            @Override
-            public void callback(final TestScenarioModelContent content) {
+        return content -> {
 
                 //Path is set to null when the Editor is closed (which can happen before async calls complete).
                 if (versionRecordManager.getCurrentPath() == null) {
@@ -188,7 +186,6 @@ public class ScenarioEditorPresenter
                 redraw();
 
                 view.hideBusyIndicator();
-            }
         };
     }
 
@@ -249,21 +246,25 @@ public class ScenarioEditorPresenter
                                                                           commitMessage);
     }
 
+    @Override
     @WorkbenchPartTitle
     public String getTitleText() {
         return super.getTitleText();
     }
 
+    @Override
     @WorkbenchPartTitleDecoration
     public IsWidget getTitle() {
         return super.getTitle();
     }
 
+    @Override
     @WorkbenchPartView
     public IsWidget getWidget() {
         return super.getWidget();
     }
 
+    @Override
     @WorkbenchMenu
     public void getMenus(final Consumer<Menus> menusConsumer) {
         super.getMenus(menusConsumer);
@@ -271,8 +272,9 @@ public class ScenarioEditorPresenter
 
     @Override
     protected Promise<Void> makeMenuBar() {
-        if (workbenchContext.getActiveWorkspaceProject().isPresent()) {
-            final WorkspaceProject activeProject = workbenchContext.getActiveWorkspaceProject().get();
+        Optional<WorkspaceProject> activeWorkspaceProject = workbenchContext.getActiveWorkspaceProject();
+        if (activeWorkspaceProject.isPresent()) {
+            final WorkspaceProject activeProject = activeWorkspaceProject.get();
             return projectController.canUpdateProject(activeProject).then(canUpdateProject -> {
                 if (canUpdateProject) {
                     final ParameterizedCommand<Boolean> onSave = withComments -> {
@@ -303,7 +305,7 @@ public class ScenarioEditorPresenter
     }
 
     private void ifFixturesSizeZeroThenAddExecutionTrace() {
-        if (scenario.getFixtures().size() == 0) {
+        if (scenario.getFixtures().isEmpty()) {
             scenario.getFixtures().add(new ExecutionTrace());
         }
     }
