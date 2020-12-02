@@ -61,6 +61,7 @@ public class ScenarioGridPanel extends GridLienzoPanel implements NodeMouseOutHa
         handlerRegistrations.add(getScenarioGridLayer().addNodeMouseOutHandler(this));
         handlerRegistrations.add(getScenarioGridLayer().addNodeMouseMoveHandler(mouseMoveHandler));
         handlerRegistrations.add(getScenarioGridLayer().addNodeMouseWheelHandler(this));
+        handlerRegistrations.add(getScenarioGridLayer().addNodeMouseDownHandler(event -> {}));
         handlerRegistrations.add(getScrollPanel().addDomHandler(this, ScrollEvent.getType()));
     }
 
