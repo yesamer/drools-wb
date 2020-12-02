@@ -15,6 +15,7 @@
  */
 package org.drools.workbench.screens.scenariosimulation.client.widgets;
 
+import com.ait.lienzo.client.core.event.NodeMouseDownHandler;
 import com.ait.lienzo.client.core.event.NodeMouseWheelEvent;
 import com.ait.lienzo.test.LienzoMockitoTestRunner;
 import com.google.gwt.event.dom.client.ClickEvent;
@@ -31,6 +32,7 @@ import org.mockito.Mock;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Matchers.isA;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -76,6 +78,8 @@ public class ScenarioGridPanelTest extends AbstractScenarioSimulationTest {
         verify(scenarioGridLayerMock, times(1)).addNodeMouseOutHandler(eq(scenarioGridPanelSpy));
         verify(scenarioGridLayerMock, times(1)).addNodeMouseMoveHandler(eq(scenarioSimulationGridPanelMouseMoveHandlerMock));
         verify(scenarioGridLayerMock, times(1)).addNodeMouseWheelHandler(eq(scenarioGridPanelSpy));
+        verify(scenarioGridLayerMock, times(1)).addNodeMouseDownHandler(isA(NodeMouseDownHandler.class));
+
         verify(scrollPanelMock, times(1)).addDomHandler(eq(scenarioGridPanelSpy), eq(ScrollEvent.getType()));
     }
 
