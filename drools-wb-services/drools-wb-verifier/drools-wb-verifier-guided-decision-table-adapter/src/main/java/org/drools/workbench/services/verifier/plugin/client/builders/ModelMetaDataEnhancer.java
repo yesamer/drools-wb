@@ -82,8 +82,7 @@ public class ModelMetaDataEnhancer {
                 .map(c -> (ActionInsertFactCol52) c)
                 .filter(c -> c.getBoundName().equals(binding))
                 .findFirst()
-                .map(ActionInsertFactCol52::getFactType)
-                .get();
+                .map(ActionInsertFactCol52::getFactType).orElse(""); //TODO: Default value or exception?
     }
 
     public enum PatternType {

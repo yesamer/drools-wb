@@ -53,7 +53,7 @@ import static org.drools.workbench.models.datamodel.rule.BaseSingleFieldConstrai
 
 public class DataBuilder {
 
-    private final static int FIRST_DATA_ROW = 9;
+    private static final int FIRST_DATA_ROW = 9;
 
     private final Sheet sheet;
     private final GuidedDecisionTable52 dtable;
@@ -271,8 +271,9 @@ public class DataBuilder {
                                         addQuotes);
                 case BOOLEAN:
                     return getBooleanValue(cell);
+                default:
+                    return null;
             }
-            return null;
         }
 
         private String getNumericValue(final DTCellValue52 cell) {
@@ -373,8 +374,6 @@ public class DataBuilder {
                 return ((ConditionCol52) baseColumn).getFieldType();
             } else if (baseColumn instanceof ActionSetFieldCol52) {
                 return ((ActionSetFieldCol52) baseColumn).getType();
-            } else if (baseColumn instanceof ActionInsertFactCol52) {
-                return ((ActionInsertFactCol52) baseColumn).getType();
             } else if (baseColumn instanceof ActionInsertFactCol52) {
                 return ((ActionInsertFactCol52) baseColumn).getType();
             } else {

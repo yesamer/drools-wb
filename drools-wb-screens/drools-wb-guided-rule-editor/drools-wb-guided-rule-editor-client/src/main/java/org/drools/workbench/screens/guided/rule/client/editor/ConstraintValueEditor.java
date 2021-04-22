@@ -24,12 +24,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.google.gwt.dom.client.InputElement;
-import com.google.gwt.event.dom.client.ChangeEvent;
-import com.google.gwt.event.dom.client.ChangeHandler;
-import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.event.dom.client.ClickHandler;
-import com.google.gwt.event.logical.shared.ValueChangeEvent;
-import com.google.gwt.event.logical.shared.ValueChangeHandler;
 import com.google.gwt.event.shared.EventBus;
 import com.google.gwt.i18n.client.DateTimeFormat;
 import com.google.gwt.user.client.Command;
@@ -70,9 +65,7 @@ import org.kie.workbench.common.services.shared.preferences.ApplicationPreferenc
 import org.kie.workbench.common.widgets.client.datamodel.AsyncPackageDataModelOracle;
 import org.kie.workbench.common.widgets.client.datamodel.CEPOracle;
 import org.kie.workbench.common.widgets.client.widget.TextBoxFactory;
-import org.uberfire.client.callbacks.Callback;
 import org.uberfire.ext.widgets.common.client.common.DatePicker;
-import org.uberfire.ext.widgets.common.client.common.DropDownValueChanged;
 import org.uberfire.ext.widgets.common.client.common.SmallLabel;
 import org.uberfire.ext.widgets.common.client.common.popups.FormStylePopup;
 
@@ -104,12 +97,7 @@ public class ConstraintValueEditor extends Composite {
     private Command onTemplateValueChangeCommand;
     private boolean isDropDownDataEnum;
     private Widget constraintWidget = null;
-    private AddConstraintButton addConstraintButton = new AddConstraintButton(
-            new ClickHandler() {
-                public void onClick(ClickEvent event) {
-                    showTypeChoice(constraint);
-                }
-            });
+    private AddConstraintButton addConstraintButton;
 
     public ConstraintValueEditor(final BaseSingleFieldConstraint con,
                                  final CompositeFieldConstraint constraintList,
@@ -124,6 +112,7 @@ public class ConstraintValueEditor extends Composite {
         this.modeller = modeller;
         this.eventBus = eventBus;
         this.readOnly = readOnly;
+        this.addConstraintButton = new AddConstraintButton(clickEvent -> showTypeChoice(constraint));
     }
 
     public void init() {
@@ -239,17 +228,14 @@ public class ConstraintValueEditor extends Composite {
         HorizontalPanel wrapper = new HorizontalPanel();
         Image clear = GuidedRuleEditorImages508.INSTANCE.DeleteItemSmall();
         clear.setTitle(GuidedRuleEditorResources.CONSTANTS.RemoveConstraintValueDefinition());
-        clear.addClickHandler(new ClickHandler() {
-
-            public void onClick(ClickEvent event) {
-                //Reset Constraint's value and value type
-                if (Window.confirm(GuidedRuleEditorResources.CONSTANTS.RemoveConstraintValueDefinitionQuestion())) {
-                    constraint.setConstraintValueType(BaseSingleFieldConstraint.TYPE_UNDEFINED);
-                    constraint.setValue(null);
-                    constraint.clearParameters();
-                    constraint.setExpressionValue(new ExpressionFormLine());
-                    doTypeChosen();
-                }
+        clear.addClickHandler(event -> {
+            //Reset Constraint's value and value type
+            if (Window.confirm(GuidedRuleEditorResources.CONSTANTS.RemoveConstraintValueDefinitionQuestion())) {
+                constraint.setConstraintValueType(BaseSingleFieldConstraint.TYPE_UNDEFINED);
+                constraint.setValue(null);
+                constraint.clearParameters();
+                constraint.setExpressionValue(new ExpressionFormLine());
+                doTypeChosen();
             }
         });
 
@@ -291,12 +277,7 @@ public class ConstraintValueEditor extends Composite {
                                                                                                                 fieldName);
             if (customFormConfiguration != null) {
                 Button btnCustom = new Button(con.getValue(),
-                                              new ClickHandler() {
-
-                                                  public void onClick(ClickEvent event) {
-                                                      showTypeChoice(constraint);
-                                                  }
-                                              });
+                                              event -> showTypeChoice(constraint));
                 btnCustom.setEnabled(!this.readOnly);
                 return btnCustom;
             }
@@ -311,23 +292,18 @@ public class ConstraintValueEditor extends Composite {
         if (this.dropDownData != null) {
             final String operator = constraint.getOperator();
             final boolean multipleSelect = OperatorsOracle.operatorRequiresList(operator);
-            EnumDropDown enumDropDown = new EnumDropDown(constraint.getValue(),
-                                                         new DropDownValueChanged() {
+            return new EnumDropDown(constraint.getValue(),
+                                    (newText, newValue) -> {
 
-                                                             public void valueChanged(String newText,
-                                                                                      String newValue) {
-
-                                                                 //Prevent recursion once value change has been applied
-                                                                 if (!newValue.equals(constraint.getValue())) {
-                                                                     constraint.setValue(newValue);
-                                                                     executeOnValueChangeCommand();
-                                                                 }
-                                                             }
-                                                         },
-                                                         dropDownData,
-                                                         multipleSelect,
-                                                         modeller.getPath());
-            return enumDropDown;
+                                        //Prevent recursion once value change has been applied
+                                        if (!newValue.equals(constraint.getValue())) {
+                                            constraint.setValue(newValue);
+                                            executeOnValueChangeCommand();
+                                        }
+                                    },
+                                    dropDownData,
+                                    multipleSelect,
+                                    modeller.getPath());
         }
 
         //Comma separated value list (this will become a dedicated Widget but for now a TextBox suffices)
@@ -350,18 +326,15 @@ public class ConstraintValueEditor extends Composite {
             final DatePicker datePicker = new DatePicker(false);
 
             // Wire up update handler
-            datePicker.addValueChangeHandler(new ValueChangeHandler<Date>() {
-                @Override
-                public void onValueChange(final ValueChangeEvent<Date> event) {
-                    final Date date = datePicker.getValue();
-                    final String sDate = (date == null ? null : DATE_FORMATTER.format(datePicker.getValue()));
-                    boolean update = constraint.getValue() == null || !constraint.getValue().equals(sDate);
+            datePicker.addValueChangeHandler(event -> {
+                final Date date = datePicker.getValue();
+                final String sDate = (date == null ? null : DATE_FORMATTER.format(datePicker.getValue()));
+                boolean update = constraint.getValue() == null || !constraint.getValue().equals(sDate);
 
-                    constraint.setValue(sDate);
+                constraint.setValue(sDate);
 
-                    if (update) {
-                        executeOnValueChangeCommand();
-                    }
+                if (update) {
+                    executeOnValueChangeCommand();
                 }
             });
 
@@ -402,29 +375,23 @@ public class ConstraintValueEditor extends Composite {
         for (String var : bindingsInScope) {
             final String binding = var;
             helper.isApplicableBindingsInScope(var,
-                                               new Callback<Boolean>() {
-                                                   @Override
-                                                   public void callback(final Boolean result) {
-                                                       if (Boolean.TRUE.equals(result)) {
-                                                           box.addItem(binding);
-                                                           if (ConstraintValueEditor.this.constraint.getValue() != null && ConstraintValueEditor.this.constraint.getValue().equals(binding)) {
-                                                               box.setSelectedIndex(box.getItemCount() - 1);
-                                                           }
+                                               result -> {
+                                                   if (Boolean.TRUE.equals(result)) {
+                                                       box.addItem(binding);
+                                                       if (ConstraintValueEditor.this.constraint.getValue() != null && ConstraintValueEditor.this.constraint.getValue().equals(binding)) {
+                                                           box.setSelectedIndex(box.getItemCount() - 1);
                                                        }
                                                    }
                                                });
         }
 
-        box.addChangeHandler(new ChangeHandler() {
-
-            public void onChange(ChangeEvent event) {
-                executeOnValueChangeCommand();
-                int selectedIndex = box.getSelectedIndex();
-                if (selectedIndex > 0) {
-                    constraint.setValue(box.getItemText(selectedIndex));
-                } else {
-                    constraint.setValue(null);
-                }
+        box.addChangeHandler(event -> {
+            executeOnValueChangeCommand();
+            int selectedIndex = box.getSelectedIndex();
+            if (selectedIndex > 0) {
+                constraint.setValue(box.getItemText(selectedIndex));
+            } else {
+                constraint.setValue(null);
             }
         });
 
@@ -445,16 +412,9 @@ public class ConstraintValueEditor extends Composite {
         Image img = new Image(GuidedRuleEditorResources.INSTANCE.images().functionAssets());
         img.setTitle(msg);
         box.setTitle(msg);
-        box.addValueChangeHandler(new ValueChangeHandler<String>() {
+        box.addValueChangeHandler(event -> executeOnValueChangeCommand());
 
-            public void onValueChange(final ValueChangeEvent event) {
-                executeOnValueChangeCommand();
-            }
-        });
-
-        Widget ed = widgets(img,
-                            box);
-        return ed;
+        return widgets(img, box);
     }
 
     private Widget expressionEditor() {
@@ -464,15 +424,8 @@ public class ConstraintValueEditor extends Composite {
                                         this.constraint.getExpressionValue(),
                                         this.readOnly);
 
-        builder.addOnModifiedCommand(new Command() {
-
-            public void execute() {
-                executeOnValueChangeCommand();
-            }
-        });
-        Widget ed = widgets(new HTML("&nbsp;"),
-                            builder);
-        return ed;
+        builder.addOnModifiedCommand(this::executeOnValueChangeCommand);
+        return widgets(new HTML("&nbsp;"), builder);
     }
 
     /**
@@ -507,7 +460,7 @@ public class ConstraintValueEditor extends Composite {
     //Only display the number of characters that have been entered
     void attachDisplayLengthHandler(final TextBox box) {
         setBoxSize(box);
-        box.addKeyUpHandler((e) -> setBoxSize(box));
+        box.addKeyUpHandler(e -> setBoxSize(box));
     }
 
     void setBoxSize(final TextBox box) {
@@ -535,14 +488,11 @@ public class ConstraintValueEditor extends Composite {
 
             final SingleFieldConstraint sfc = (SingleFieldConstraint) con;
 
-            customFormPopUp.addOkButtonHandler(new ClickHandler() {
-
-                public void onClick(ClickEvent event) {
-                    sfc.setConstraintValueType(SingleFieldConstraint.TYPE_LITERAL);
-                    sfc.setId(customFormPopUp.getFormId());
-                    sfc.setValue(customFormPopUp.getFormValue());
-                    doTypeChosen(customFormPopUp);
-                }
+            customFormPopUp.addOkButtonHandler(event -> {
+                sfc.setConstraintValueType(SingleFieldConstraint.TYPE_LITERAL);
+                sfc.setId(customFormPopUp.getFormId());
+                sfc.setValue(customFormPopUp.getFormValue());
+                doTypeChosen(customFormPopUp);
             });
 
             customFormPopUp.show(sfc.getId(),
@@ -566,15 +516,15 @@ public class ConstraintValueEditor extends Composite {
 
         if (con instanceof SingleFieldConstraint) {
             SingleFieldConstraint sfc = (SingleFieldConstraint) con;
-            String fieldName = sfc.getFieldName();
-            if (fieldName.equals(DataType.TYPE_THIS)) {
+            String sfcFieldName = sfc.getFieldName();
+            if (sfcFieldName.equals(DataType.TYPE_THIS)) {
                 showLiteralSelector = CEPOracle.isCEPOperator(sfc.getOperator());
                 showFormulaSelector = showFormulaSelector && showLiteralSelector;
             }
         } else if (con instanceof ConnectiveConstraint) {
             ConnectiveConstraint cc = (ConnectiveConstraint) con;
-            String fieldName = cc.getFieldName();
-            if (fieldName.equals(DataType.TYPE_THIS)) {
+            String ccFieldName = cc.getFieldName();
+            if (ccFieldName.equals(DataType.TYPE_THIS)) {
                 showLiteralSelector = CEPOracle.isCEPOperator(cc.getOperator());
                 showFormulaSelector = showFormulaSelector && showLiteralSelector;
             }
@@ -611,7 +561,7 @@ public class ConstraintValueEditor extends Composite {
         //Show variables selector, if there are any variables in scope
         if (showVariableSelector) {
             List<String> bindingsInScope = this.model.getBoundVariablesInScope(this.constraint);
-            if (bindingsInScope.size() > 0 || DataType.TYPE_COLLECTION.equals(this.fieldType)) {
+            if (!bindingsInScope.isEmpty() || DataType.TYPE_COLLECTION.equals(this.fieldType)) {
 
                 final Button bindingButton = new Button(GuidedRuleEditorResources.CONSTANTS.BoundVariable());
 
@@ -620,21 +570,17 @@ public class ConstraintValueEditor extends Composite {
 
                 for (String var : bindingsInScope) {
                     helper.isApplicableBindingsInScope(var,
-                                                       new Callback<Boolean>() {
-                                                           @Override
-                                                           public void callback(final Boolean result) {
-                                                               if (Boolean.TRUE.equals(result)) {
-                                                                   if (!bindingButtonContainer.contains(bindingButton)) {
-                                                                       bindingButtonContainer.add(bindingButton);
-                                                                       bindingButton.addClickHandler(getValueTypeFormOnClickHandler(con,
-                                                                                                                                    form,
-                                                                                                                                    SingleFieldConstraint.TYPE_VARIABLE));
-                                                                       form.addAttributeWithHelp(GuidedRuleEditorResources.CONSTANTS.AVariable(),
-                                                                                                 GuidedRuleEditorResources.CONSTANTS.ABoundVariable(),
-                                                                                                 GuidedRuleEditorResources.CONSTANTS.BoundVariableTip(),
-                                                                                                 bindingButton);
-                                                                   }
-                                                               }
+                                                       result -> {
+                                                           if (Boolean.TRUE.equals(result) &&
+                                                               !bindingButtonContainer.contains(bindingButton)) {
+                                                                   bindingButtonContainer.add(bindingButton);
+                                                                   bindingButton.addClickHandler(getValueTypeFormOnClickHandler(con,
+                                                                                                                                form,
+                                                                                                                                SingleFieldConstraint.TYPE_VARIABLE));
+                                                                   form.addAttributeWithHelp(GuidedRuleEditorResources.CONSTANTS.AVariable(),
+                                                                                             GuidedRuleEditorResources.CONSTANTS.ABoundVariable(),
+                                                                                             GuidedRuleEditorResources.CONSTANTS.BoundVariableTip(),
+                                                                                             bindingButton);
                                                            }
                                                        });
                 }
@@ -673,12 +619,9 @@ public class ConstraintValueEditor extends Composite {
     private ClickHandler getValueTypeFormOnClickHandler(BaseSingleFieldConstraint con,
                                                         FormStylePopup form,
                                                         int type) {
-        return new ClickHandler() {
-            @Override
-            public void onClick(ClickEvent event) {
-                con.setConstraintValueType(type);
-                doTypeChosen(form);
-            }
+        return event -> {
+            con.setConstraintValueType(type);
+            doTypeChosen(form);
         };
     }
 
@@ -695,12 +638,12 @@ public class ConstraintValueEditor extends Composite {
 
     private Panel widgets(IsWidget left,
                           IsWidget right) {
-        HorizontalPanel panel = new HorizontalPanel();
-        panel.setVerticalAlignment(HasVerticalAlignment.ALIGN_MIDDLE);
-        panel.add(left);
-        panel.add(right);
-        panel.setWidth("100%");
-        return panel;
+        HorizontalPanel hrPanel = new HorizontalPanel();
+        hrPanel.setVerticalAlignment(HasVerticalAlignment.ALIGN_MIDDLE);
+        hrPanel.add(left);
+        hrPanel.add(right);
+        hrPanel.setWidth("100%");
+        return hrPanel;
     }
 
     public void setOnValueChangeCommand(Command onValueChangeCommand) {
@@ -721,14 +664,14 @@ public class ConstraintValueEditor extends Composite {
 
         this.isDropDownDataEnum = true;
 
-        final Map<String, String> currentValueMap = new HashMap<String, String>();
+        final Map<String, String> currentValueMap = new HashMap<>();
 
         if (constraintList != null && constraintList.getConstraints() != null) {
             for (FieldConstraint con : constraintList.getConstraints()) {
                 if (con instanceof SingleFieldConstraint) {
                     SingleFieldConstraint sfc = (SingleFieldConstraint) con;
-                    String fieldName = sfc.getFieldName();
-                    currentValueMap.put(fieldName,
+                    String sfcFieldName = sfc.getFieldName();
+                    currentValueMap.put(sfcFieldName,
                                         sfc.getValue());
                 }
             }

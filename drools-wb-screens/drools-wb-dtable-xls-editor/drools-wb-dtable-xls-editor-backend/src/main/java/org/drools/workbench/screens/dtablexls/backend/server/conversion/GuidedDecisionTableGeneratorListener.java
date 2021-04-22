@@ -89,7 +89,7 @@ public class GuidedDecisionTableGeneratorListener
 
     //Accumulated output
     private Map<Integer, ActionType> _actions;
-    private final List<GuidedDecisionTable52> _dtables = new ArrayList<GuidedDecisionTable52>();
+    private final List<GuidedDecisionTable52> _dtables = new ArrayList<>();
     private List<GuidedDecisionTableSourceBuilder> _sourceBuilders;
 
     //RuleSet wide configuration
@@ -228,7 +228,7 @@ public class GuidedDecisionTableGeneratorListener
                          column,
                          value);
         this._isInRuleTable = true;
-        this._actions = new HashMap<Integer, ActionType>();
+        this._actions = new HashMap<>();
         this._ruleStartColumn = column;
         this._ruleEndColumn = column;
         this._ruleStartRow = row;
@@ -245,7 +245,7 @@ public class GuidedDecisionTableGeneratorListener
         this._dtable.setTableFormat(GuidedDecisionTable52.TableFormat.EXTENDED_ENTRY);
         this._dtable.setTableName(RuleSheetParserUtil.getRuleName(value));
         this._dtable.setPackageName(_dmo.getPackageName());
-        this._sourceBuilders = new ArrayList<GuidedDecisionTableSourceBuilder>();
+        this._sourceBuilders = new ArrayList<>();
         rowNumberBuilder.clearValues();
         ruleNameBuilder.clearValues();
         defaultDescriptionBuilder.clearValues();

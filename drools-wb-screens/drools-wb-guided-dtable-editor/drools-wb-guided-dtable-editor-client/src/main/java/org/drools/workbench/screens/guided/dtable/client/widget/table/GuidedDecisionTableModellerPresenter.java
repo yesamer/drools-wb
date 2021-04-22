@@ -103,7 +103,7 @@ public class GuidedDecisionTableModellerPresenter implements GuidedDecisionTable
         //Add support for Column PopOver
         handlerRegistrations.add(view.getGridLayerView().addNodeMouseMoveHandler(new ColumnHeaderPopOverHandler(this,
                                                                                                                 columnHeaderPopOver)));
-        handlerRegistrations.add(view.getGridLayerView().addNodeMouseOutHandler((e) -> columnHeaderPopOver.hide()));
+        handlerRegistrations.add(view.getGridLayerView().addNodeMouseOutHandler(e -> columnHeaderPopOver.hide()));
 
         //Add support for keyboard operations
         final GridLayer layer = view.getGridLayerView();
@@ -188,8 +188,7 @@ public class GuidedDecisionTableModellerPresenter implements GuidedDecisionTable
 
     private double getDecisionTableX(final GuidedDecisionTableView.Presenter dtPresenter) {
         final Bounds bounds = getView().getBounds();
-        final double x = bounds.getX() + (bounds.getWidth() - dtPresenter.getView().getWidth()) / 2;
-        return x;
+        return bounds.getX() + (bounds.getWidth() - dtPresenter.getView().getWidth()) / 2;
     }
 
     @SuppressWarnings("unused")
@@ -344,11 +343,9 @@ public class GuidedDecisionTableModellerPresenter implements GuidedDecisionTable
         if (!isDecisionTableAvailable(presenter)) {
             return;
         }
-        final Optional<GuidedDecisionTableView.Presenter> activeDecisionTable = getActiveDecisionTable();
-        if (activeDecisionTable.isPresent()) {
-            if (presenter.equals(activeDecisionTable.get())) {
-                return;
-            }
+        final Optional<GuidedDecisionTableView.Presenter> activeDecisionTableOpt = getActiveDecisionTable();
+        if (activeDecisionTableOpt.isPresent() && presenter.equals(activeDecisionTableOpt.get())) {
+            return;
         }
 
         doDecisionTableSelected(presenter);
@@ -396,8 +393,9 @@ public class GuidedDecisionTableModellerPresenter implements GuidedDecisionTable
     }
 
     private double getHeaderCaptionWidth() {
-        if (getActiveDecisionTable().get().getView().getRenderer() instanceof GuidedDecisionTableRenderer) {
-            return ((GuidedDecisionTableRenderer) getActiveDecisionTable().get().getView().getRenderer()).getHeaderCaptionWidth() + 10;
+        final Optional<GuidedDecisionTableView.Presenter> activeDecisionTableOpt = getActiveDecisionTable();
+        if (activeDecisionTableOpt.isPresent() && activeDecisionTableOpt.get().getView().getRenderer() instanceof GuidedDecisionTableRenderer) {
+            return ((GuidedDecisionTableRenderer) activeDecisionTableOpt.get().getView().getRenderer()).getHeaderCaptionWidth() + 10;
         } else {
             return 0;
         }

@@ -49,7 +49,6 @@ import org.kie.workbench.common.widgets.client.source.ViewSourceView;
 import org.kie.workbench.common.widgets.configresource.client.widget.bound.ImportsWidgetPresenter;
 import org.kie.workbench.common.widgets.metadata.client.KieEditor;
 import org.uberfire.backend.vfs.ObservablePath;
-import org.uberfire.backend.vfs.Path;
 import org.uberfire.client.annotations.WorkbenchEditor;
 import org.uberfire.client.annotations.WorkbenchMenu;
 import org.uberfire.client.annotations.WorkbenchPartTitle;
@@ -121,7 +120,7 @@ public class GuidedRuleEditorPresenter
 
         super.init(path,
                    place,
-                   getResourceType(path));
+                   getResourceType());
         this.isDSLEnabled = resourceTypeDSL.accept(path);
     }
 
@@ -143,55 +142,46 @@ public class GuidedRuleEditorPresenter
 
     @Override
     public void onSourceTabSelected() {
-        getService().call(new RemoteCallback<String>() {
-            @Override
-            public void callback(String source) {
-                updateSource(source);
-            }
-        }).toSource(versionRecordManager.getCurrentPath(),
-                    model);
+        getService().call((RemoteCallback<String>) this::updateSource).toSource(versionRecordManager.getCurrentPath(),
+                                                                                model);
     }
 
     private RemoteCallback<GuidedEditorContent> getModelSuccessCallback() {
-        return new RemoteCallback<GuidedEditorContent>() {
-
-            @Override
-            public void callback(final GuidedEditorContent content) {
-                //Path is set to null when the Editor is closed (which can happen before async calls complete).
-                if (versionRecordManager.getCurrentPath() == null) {
-                    return;
-                }
-
-                GuidedRuleEditorPresenter.this.model = content.getModel();
-                final PackageDataModelOracleBaselinePayload dataModel = content.getDataModel();
-                oracle = oracleFactory.makeAsyncPackageDataModelOracle(versionRecordManager.getCurrentPath(),
-                                                                       model,
-                                                                       dataModel);
-
-                resetEditorPages(content.getOverview());
-
-                addSourcePage();
-
-                addImportsTab(importsWidget);
-
-                List<RuleModellerActionPlugin> actionPlugins = new ArrayList<>();
-
-                actionPluginInstance.forEach(actionPlugins::add);
-
-                view.setContent(model,
-                                actionPlugins,
-                                oracle,
-                                getRuleNamesService(),
-                                isReadOnly,
-                                isDSLEnabled);
-                importsWidget.setContent(oracle,
-                                         model.getImports(),
-                                         isReadOnly);
-
-                view.hideBusyIndicator();
-
-                createOriginalHash(model);
+        return content -> {
+            //Path is set to null when the Editor is closed (which can happen before async calls complete).
+            if (versionRecordManager.getCurrentPath() == null) {
+                return;
             }
+
+            GuidedRuleEditorPresenter.this.model = content.getModel();
+            final PackageDataModelOracleBaselinePayload dataModel = content.getDataModel();
+            oracle = oracleFactory.makeAsyncPackageDataModelOracle(versionRecordManager.getCurrentPath(),
+                                                                   model,
+                                                                   dataModel);
+
+            resetEditorPages(content.getOverview());
+
+            addSourcePage();
+
+            addImportsTab(importsWidget);
+
+            List<RuleModellerActionPlugin> actionPlugins = new ArrayList<>();
+
+            actionPluginInstance.forEach(actionPlugins::add);
+
+            view.setContent(model,
+                            actionPlugins,
+                            oracle,
+                            getRuleNamesService(),
+                            isReadOnly,
+                            isDSLEnabled);
+            importsWidget.setContent(oracle,
+                                     model.getImports(),
+                                     isReadOnly);
+
+            view.hideBusyIndicator();
+
+            createOriginalHash(model);
         };
     }
 
@@ -217,12 +207,13 @@ public class GuidedRuleEditorPresenter
                                                              view.getContent());
     }
 
+    @Override
     protected void save() {
         GuidedRuleEditorValidator validator = new GuidedRuleEditorValidator(model,
                                                                             GuidedRuleEditorResources.CONSTANTS);
 
         if (validator.isValid()) {
-            ParameterizedCommand<String> command = (commitMessage) -> {
+            ParameterizedCommand<String> command = commitMessage -> {
                 view.showSaving();
                 save(commitMessage);
             };
@@ -264,29 +255,29 @@ public class GuidedRuleEditorPresenter
         return super.mayClose(view.getContent());
     }
 
+    @Override
     @WorkbenchPartTitle
     public String getTitleText() {
         return super.getTitleText();
     }
 
+    @Override
     @WorkbenchPartTitleDecoration
     public IsWidget getTitle() {
         return super.getTitle();
     }
 
-    private ClientResourceType getResourceType(final Path path) {
-        if (resourceTypeDRL.accept(path)) {
-            return resourceTypeDRL;
-        } else {
-            return resourceTypeDRL;
-        }
+    private ClientResourceType getResourceType() {
+        return resourceTypeDRL;
     }
 
+    @Override
     @WorkbenchPartView
     public IsWidget getWidget() {
         return super.getWidget();
     }
 
+    @Override
     @WorkbenchMenu
     public void getMenus(final Consumer<Menus> menusConsumer) {
         super.getMenus(menusConsumer);

@@ -17,6 +17,7 @@
 package org.drools.workbench.screens.globals.client.editor;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -74,7 +75,7 @@ public class GlobalsEditorPresenter
     private GlobalsEditorView view;
 
     @Inject
-    private GlobalResourceType type;
+    private GlobalResourceType globalResourceType;
 
     private GlobalsModel model;
 
@@ -92,13 +93,14 @@ public class GlobalsEditorPresenter
                           final PlaceRequest place) {
         super.init(path,
                    place,
-                   type);
+                   globalResourceType);
     }
 
     @Override
     protected Promise<Void> makeMenuBar() {
-        if (workbenchContext.getActiveWorkspaceProject().isPresent()) {
-            final WorkspaceProject activeProject = workbenchContext.getActiveWorkspaceProject().get();
+        Optional<WorkspaceProject> activeWorkspaceProjectOpt = workbenchContext.getActiveWorkspaceProject();
+        if (activeWorkspaceProjectOpt.isPresent()) {
+            final WorkspaceProject activeProject = activeWorkspaceProjectOpt.get();
             return projectController.canUpdateProject(activeProject).then(canUpdateProject -> {
                 if (canUpdateProject) {
                     final ParameterizedCommand<Boolean> onSave = withComments -> {
@@ -144,30 +146,26 @@ public class GlobalsEditorPresenter
     }
 
     protected RemoteCallback<GlobalsEditorContent> getModelSuccessCallback() {
-        return new RemoteCallback<GlobalsEditorContent>() {
-
-            @Override
-            public void callback(final GlobalsEditorContent content) {
-                //Path is set to null when the Editor is closed (which can happen before async calls complete).
-                if (versionRecordManager.getCurrentPath() == null) {
-                    return;
-                }
-
-                model = content.getModel();
-
-                resetEditorPages(content.getOverview());
-                addSourcePage();
-
-                final List<String> fullyQualifiedClassNames = content.getFullyQualifiedClassNames();
-
-                view.setContent(content.getModel().getGlobals(),
-                                fullyQualifiedClassNames,
-                                isReadOnly,
-                                content.getOverview().getMetadata().isGenerated());
-
-                createOriginalHash(model);
-                view.hideBusyIndicator();
+        return content -> {
+            //Path is set to null when the Editor is closed (which can happen before async calls complete).
+            if (versionRecordManager.getCurrentPath() == null) {
+                return;
             }
+
+            model = content.getModel();
+
+            resetEditorPages(content.getOverview());
+            addSourcePage();
+
+            final List<String> fullyQualifiedClassNames = content.getFullyQualifiedClassNames();
+
+            view.setContent(content.getModel().getGlobals(),
+                            fullyQualifiedClassNames,
+                            isReadOnly,
+                            content.getOverview().getMetadata().isGenerated());
+
+            createOriginalHash(model);
+            view.hideBusyIndicator();
         };
     }
 
@@ -181,7 +179,7 @@ public class GlobalsEditorPresenter
 
     @Override
     protected void save() {
-        ParameterizedCommand<String> doSave = (commitMessage) -> {
+        ParameterizedCommand<String> doSave = commitMessage -> {
             baseView.showSaving();
             globalsEditorService
                 .call(getSaveSuccessCallback(model.hashCode()),
@@ -193,10 +191,9 @@ public class GlobalsEditorPresenter
             concurrentUpdateSessionInfo = null;
         };
 
-        Command showPopUp = () -> {
-            savePopUpPresenter.show(versionRecordManager.getCurrentPath(),
-                                    doSave);
-        };
+        Command showPopUp = () ->
+                savePopUpPresenter.show(versionRecordManager.getCurrentPath(),
+                                        doSave);
 
         Command command = () -> {
             if (saveWithComments) {
@@ -206,7 +203,7 @@ public class GlobalsEditorPresenter
             }
         };
 
-        validationService.call((obj) -> {
+        validationService.call(obj -> {
             List<ValidationMessage> validationMessages = (List<ValidationMessage>) obj;
             if (validationMessages.isEmpty()) {
                 command.execute();
@@ -222,7 +219,7 @@ public class GlobalsEditorPresenter
     }
 
     protected void onDelete() {
-        validationService.call((validationMessages) -> {
+        validationService.call(validationMessages -> {
             if (((List<ValidationMessage>) validationMessages).isEmpty()) {
                 showDeletePopup(getVersionRecordManager().getCurrentPath());
             } else {
@@ -253,15 +250,11 @@ public class GlobalsEditorPresenter
 
     @Override
     public void onSourceTabSelected() {
-        globalsEditorService.call(new RemoteCallback<String>() {
-            @Override
-            public void callback(String source) {
-                updateSource(source);
-            }
-        }).toSource(versionRecordManager.getCurrentPath(),
-                    model);
+        globalsEditorService.call((RemoteCallback<String>) this::updateSource).toSource(versionRecordManager.getCurrentPath(),
+                                                                                        model);
     }
 
+    @Override
     @WorkbenchPartView
     public IsWidget getWidget() {
         return super.getWidget();
@@ -284,16 +277,19 @@ public class GlobalsEditorPresenter
         return super.mayClose(model);
     }
 
+    @Override
     @WorkbenchPartTitleDecoration
     public IsWidget getTitle() {
         return super.getTitle();
     }
 
+    @Override
     @WorkbenchPartTitle
     public String getTitleText() {
         return super.getTitleText();
     }
 
+    @Override
     @WorkbenchMenu
     public void getMenus(final Consumer<Menus> menusConsumer) {
         super.getMenus(menusConsumer);

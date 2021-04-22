@@ -16,13 +16,12 @@
 
 package org.drools.workbench.screens.dtablexls.client.editor;
 
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import javax.enterprise.context.Dependent;
 import javax.inject.Inject;
 
-import com.google.gwt.event.dom.client.ClickEvent;
-import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.user.client.ui.IsWidget;
 import elemental2.promise.Promise;
 import org.drools.workbench.models.guided.dtable.shared.conversion.ConversionMessage;
@@ -137,24 +136,13 @@ public class DecisionTableXLSEditorPresenter
     void showConcurrentUpdateError() {
         newConcurrentUpdate(concurrentUpdateSessionInfo.getPath(),
                             concurrentUpdateSessionInfo.getIdentity(),
-                            new Command() {
-                                @Override
-                                public void execute() {
-                                    submit();
-                                }
+                            this::submit,
+                            () -> {
+                                //cancel?
                             },
-                            new Command() {
-                                @Override
-                                public void execute() {
-                                    //cancel?
-                                }
-                            },
-                            new Command() {
-                                @Override
-                                public void execute() {
-                                    reload();
-                                    concurrentUpdateSessionInfo = null;
-                                }
+                            () -> {
+                                reload();
+                                concurrentUpdateSessionInfo = null;
                             }
         ).show();
     }
@@ -178,27 +166,19 @@ public class DecisionTableXLSEditorPresenter
     }
 
     private RemoteCallback<DecisionTableXLSContent> getModelSuccessCallback() {
-        return new RemoteCallback<DecisionTableXLSContent>() {
-            @Override
-            public void callback(final DecisionTableXLSContent content) {
-                resetEditorPages(content.getOverview());
-                addSourcePage();
+        return content -> {
+            resetEditorPages(content.getOverview());
+            addSourcePage();
 
-                view.setPath(versionRecordManager.getCurrentPath());
-                view.setReadOnly(isReadOnly);
-            }
+            view.setPath(versionRecordManager.getCurrentPath());
+            view.setReadOnly(isReadOnly);
         };
     }
 
     @Override
     public void onSourceTabSelected() {
         decisionTableXLSService.call(
-                new RemoteCallback<String>() {
-                    @Override
-                    public void callback(String source) {
-                        updateSource(source);
-                    }
-                },
+                (RemoteCallback<String>) this::updateSource,
                 getCouldNotGenerateSourceErrorCallback()
         ).getSource(versionRecordManager.getCurrentPath());
     }
@@ -221,8 +201,9 @@ public class DecisionTableXLSEditorPresenter
 
     @Override
     protected Promise<Void> makeMenuBar() {
-        if (workbenchContext.getActiveWorkspaceProject().isPresent()) {
-            final WorkspaceProject activeProject = workbenchContext.getActiveWorkspaceProject().get();
+        Optional<WorkspaceProject> activeWorkspaceProject = workbenchContext.getActiveWorkspaceProject();
+        if (activeWorkspaceProject.isPresent()) {
+            final WorkspaceProject activeProject = activeWorkspaceProject.get();
             return projectController.canUpdateProject(activeProject).then(canUpdateProject -> {
                 if (canUpdateProject) {
                     fileMenuBuilder
@@ -255,12 +236,7 @@ public class DecisionTableXLSEditorPresenter
 
             private Button button = new Button(DecisionTableXLSEditorConstants.INSTANCE.Convert()) {{
                 setSize(ButtonSize.SMALL);
-                addClickHandler(new ClickHandler() {
-                    @Override
-                    public void onClick(final ClickEvent event) {
-                        convert();
-                    }
-                });
+                addClickHandler(event -> convert());
             }};
 
             @Override
@@ -302,21 +278,25 @@ public class DecisionTableXLSEditorPresenter
         super.onClose();
     }
 
+    @Override
     @WorkbenchPartTitleDecoration
     public IsWidget getTitle() {
         return super.getTitle();
     }
 
+    @Override
     @WorkbenchPartTitle
     public String getTitleText() {
         return super.getTitleText();
     }
 
+    @Override
     @WorkbenchPartView
     public IsWidget getWidget() {
         return super.getWidget();
     }
 
+    @Override
     @WorkbenchMenu
     public void getMenus(final Consumer<Menus> menusConsumer) {
         super.getMenus(menusConsumer);
@@ -324,18 +304,15 @@ public class DecisionTableXLSEditorPresenter
 
     private void convert() {
         busyIndicatorView.showBusyIndicator(DecisionTableXLSEditorConstants.INSTANCE.Converting());
-        decisionTableXLSService.call(new RemoteCallback<ConversionResult>() {
-            @Override
-            public void callback(final ConversionResult response) {
-                busyIndicatorView.hideBusyIndicator();
-                if (response.getMessages().size() > 0) {
-                    final PopupListWidget popup = new PopupListWidget();
-                    for (ConversionMessage message : response.getMessages()) {
-                        popup.addListMessage(convertMessageType(message.getMessageType()),
-                                             message.getMessage());
-                    }
-                    popup.show();
+        decisionTableXLSService.call((RemoteCallback<ConversionResult>) response -> {
+            busyIndicatorView.hideBusyIndicator();
+            if (!response.getMessages().isEmpty()) {
+                final PopupListWidget popup = new PopupListWidget();
+                for (ConversionMessage message : response.getMessages()) {
+                    popup.addListMessage(convertMessageType(message.getMessageType()),
+                                         message.getMessage());
                 }
+                popup.show();
             }
         }).convert(versionRecordManager.getCurrentPath());
     }

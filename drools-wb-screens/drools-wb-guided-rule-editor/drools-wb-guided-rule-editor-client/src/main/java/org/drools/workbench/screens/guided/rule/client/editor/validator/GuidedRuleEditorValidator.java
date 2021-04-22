@@ -36,7 +36,7 @@ import org.kie.soup.project.datamodel.oracle.DataType;
 
 public class GuidedRuleEditorValidator {
 
-    private final List<String> errors = new ArrayList<String>();
+    private final List<String> errors = new ArrayList<>();
 
     private final RuleModel model;
     private final Constants constants;
@@ -139,7 +139,6 @@ public class GuidedRuleEditorValidator {
     private boolean isAccumulateMissing(final FromAccumulateCompositeFactPattern fromAccumulateCompositeFactPattern) {
         return isStringNullOrEmpty(fromAccumulateCompositeFactPattern.getActionCode())
                 && isStringNullOrEmpty(fromAccumulateCompositeFactPattern.getResultCode())
-                && isStringNullOrEmpty(fromAccumulateCompositeFactPattern.getResultCode())
                 && isStringNullOrEmpty(fromAccumulateCompositeFactPattern.getInitCode());
     }
 
@@ -163,9 +162,7 @@ public class GuidedRuleEditorValidator {
     }
 
     private void hasPatterns(final CompositeFactPattern iPattern) {
-        if (iPattern.getPatterns() == null) {
-            reportMandatoryFieldsError();
-        } else if (iPattern.getPatterns().length == 0) {
+        if (iPattern.getPatterns() == null || iPattern.getPatterns().length == 0) {
             reportMandatoryFieldsError();
         }
     }
@@ -188,10 +185,9 @@ public class GuidedRuleEditorValidator {
     }
 
     private boolean areOperatorAndValueInvalid(final SingleFieldConstraint singleFieldConstraint) {
-        if (singleFieldConstraint.getConstraintValueType() == BaseSingleFieldConstraint.TYPE_LITERAL) {
-            if (DataType.TYPE_STRING.equals(singleFieldConstraint.getFieldType())) {
+        if (singleFieldConstraint.getConstraintValueType() == BaseSingleFieldConstraint.TYPE_LITERAL &&
+                DataType.TYPE_STRING.equals(singleFieldConstraint.getFieldType())) {
                 return false;
-            }
         }
         return singleFieldConstraint.getOperator() != null
                 && !singleFieldConstraint.getOperator().equals("== null")

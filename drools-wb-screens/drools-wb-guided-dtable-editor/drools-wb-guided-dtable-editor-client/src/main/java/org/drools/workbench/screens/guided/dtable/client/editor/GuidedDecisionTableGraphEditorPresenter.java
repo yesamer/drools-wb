@@ -218,18 +218,19 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
         this.modeller.analysisReportScreen(analysisReportScreen);
     }
 
+    @Override
     @PostConstruct
     public void init() {
         super.init();
 
         //Selecting a Decision Table in the document selector fires a selection event
-        registeredDocumentsMenuBuilder.setActivateDocumentCommand((document) -> {
+        registeredDocumentsMenuBuilder.setActivateDocumentCommand(document -> {
             final GuidedDecisionTablePresenter dtPresenter = ((GuidedDecisionTablePresenter) document);
             decisionTableSelectedEvent.fire(new DecisionTableSelectedEvent(dtPresenter));
         });
 
         //Removing a Decision Table from the document selector is equivalent to closing the editor
-        registeredDocumentsMenuBuilder.setRemoveDocumentCommand((document) -> {
+        registeredDocumentsMenuBuilder.setRemoveDocumentCommand(document -> {
             final GuidedDecisionTablePresenter dtPresenter = ((GuidedDecisionTablePresenter) document);
             if (mayClose(dtPresenter)) {
                 removeDocument(dtPresenter);
@@ -298,7 +299,7 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
     }
 
     Command getSearchClosedCallback() {
-        return () -> clearAllHighlights();
+        return this::clearAllHighlights;
     }
 
     Command getNoResultsFoundCallback() {
@@ -362,18 +363,18 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
                 .map(w -> (GuidedDecisionTableView) w)
                 .filter(w -> Objects.equals(w.getPresenter().getModel(), model))
                 .findFirst()
-                .get();
+                .get(); //TODO exception?
     }
 
     void onNewDocument() {
-        moduleService.call((org.guvnor.common.services.project.model.Package pkg) -> {
+        moduleService.call((org.guvnor.common.services.project.model.Package pkg) ->
             helper.createNewGuidedDecisionTable(pkg.getPackageMainResourcesPath(),
                                                 "",
                                                 GuidedDecisionTable52.TableFormat.EXTENDED_ENTRY,
                                                 GuidedDecisionTable52.HitPolicy.NONE,
                                                 view,
-                                                (path) -> onOpenDocumentsInEditor(Collections.singletonList(path)));
-        }).resolvePackage(editorPath);
+                                                path -> onOpenDocumentsInEditor(Collections.singletonList(path)))
+        ).resolvePackage(editorPath);
     }
 
     @Override
@@ -419,7 +420,7 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
     void initialiseVersionManager() {
         versionRecordManager.init(null,
                                   editorPath,
-                                  (versionRecord) -> {
+                                  versionRecord -> {
                                       versionRecordManager.setVersion(versionRecord.id());
                                       access.setReadOnly(!versionRecordManager.isLatest(versionRecord));
                                       registeredDocumentsMenuBuilder.setReadOnly(isReadOnly());
@@ -435,11 +436,11 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
     }
 
     private RemoteCallback<GuidedDecisionTableEditorGraphContent> getLoadGraphContentSuccessCallback() {
-        return (content) -> {
-            this.content = content;
-            this.originalGraphHash = content.getModel().hashCode();
+        return rcContent -> {
+            this.content = rcContent;
+            this.originalGraphHash = rcContent.getModel().hashCode();
             this.concurrentUpdateSessionInfo = null;
-            final GuidedDecisionTableEditorGraphModel model = content.getModel();
+            final GuidedDecisionTableEditorGraphModel model = rcContent.getModel();
             final Set<GuidedDecisionTableEditorGraphModel.GuidedDecisionTableGraphEntry> modelEntries = model.getEntries();
 
             initialiseEditorTabsWhenNoDocuments();
@@ -461,7 +462,7 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
     }
 
     private ParameterizedCommand<GuidedDecisionTableView.Presenter> getSelectDecisionTableCommand(final Path dtToSelectPath) {
-        return (dtPresenter) -> {
+        return dtPresenter -> {
             if (dtPresenter.getCurrentPath().getOriginal().equals(dtToSelectPath)) {
                 decisionTableSelectedEvent.fire(new DecisionTableSelectedEvent(dtPresenter,
                                                                                false));
@@ -551,17 +552,16 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
 
         super.onDecisionTableSelected(event);
 
-        if (event.isLockRequired()) {
-            if (!isReadOnly()) {
-                lockManager.acquireLock();
-            }
+        if (event.isLockRequired() && !isReadOnly()) {
+            lockManager.acquireLock();
         }
     }
 
     @Override
     public Promise<Void> makeMenuBar() {
-        if (workbenchContext.getActiveWorkspaceProject().isPresent()) {
-            final WorkspaceProject activeProject = workbenchContext.getActiveWorkspaceProject().get();
+        Optional<WorkspaceProject> activeWorkspaceOpt = workbenchContext.getActiveWorkspaceProject();
+        if (activeWorkspaceOpt.isPresent()) {
+            final WorkspaceProject activeProject = activeWorkspaceOpt.get();
             return projectController.canUpdateProject(activeProject).then(canUpdateProject -> {
                 if (canUpdateProject) {
                     fileMenuBuilder
@@ -678,13 +678,13 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
     }
 
     ParameterizedCommand<Path> onSuccess() {
-        return (path) -> {
+        return path -> {
 
             final Set<GuidedDecisionTableView.Presenter> allDecisionTables = new HashSet<>(modeller.getAvailableDecisionTables());
             final int size = allDecisionTables.size();
-            final SaveGraphLatch saveGraphLatch = new SaveGraphLatch(size, "Sava and Rename");
+            final SaveGraphLatch saveAndRename = new SaveGraphLatch(size, "Save and Rename");
 
-            saveGraphLatch.saveDocumentGraph(path);
+            saveAndRename.saveDocumentGraph(path);
         };
     }
 
@@ -697,12 +697,9 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
     @Override
     public void getAvailableDocumentPaths(final Callback<List<Path>> callback) {
         view.showLoading();
-        graphService.call(new RemoteCallback<List<Path>>() {
-                              @Override
-                              public void callback(final List<Path> paths) {
-                                  view.hideBusyIndicator();
-                                  callback.callback(paths);
-                              }
+        graphService.call((RemoteCallback<List<Path>>) paths -> {
+                              view.hideBusyIndicator();
+                              callback.callback(paths);
                           },
                           new HasBusyIndicatorDefaultErrorCallback(view)).listDecisionTablesInPackage(editorPath);
     }
@@ -718,7 +715,7 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
         loadGraphLatch = new LoadGraphLatch(selectedDocumentPaths.size(),
                                             getSelectDecisionTableCommand(selectedDocumentPaths.get(0)));
 
-        selectedDocumentPaths.stream().forEach((p) -> {
+        selectedDocumentPaths.stream().forEach(p -> {
             final PathPlaceRequest placeRequest = getPathPlaceRequest(p);
             loadGraphLatch.loadDocument(placeRequest.getPath(),
                                         placeRequest);
@@ -740,9 +737,9 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
         final Set<GuidedDecisionTableView.Presenter> allDecisionTables = new HashSet<>(modeller.getAvailableDecisionTables());
         final Set<ObservablePath.OnConcurrentUpdateEvent> concurrentUpdateSessionInfos = new HashSet<>();
         allDecisionTables.stream().forEach(dtPresenter -> {
-            final ObservablePath.OnConcurrentUpdateEvent concurrentUpdateSessionInfo = dtPresenter.getConcurrentUpdateSessionInfo();
-            if (concurrentUpdateSessionInfo != null) {
-                concurrentUpdateSessionInfos.add(concurrentUpdateSessionInfo);
+            final ObservablePath.OnConcurrentUpdateEvent sessionInfo = dtPresenter.getConcurrentUpdateSessionInfo();
+            if (sessionInfo != null) {
+                concurrentUpdateSessionInfos.add(sessionInfo);
             }
         });
         if (concurrentUpdateSessionInfo != null) {
@@ -767,14 +764,14 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
     void saveDocumentGraphEntries() {
         final Set<GuidedDecisionTableView.Presenter> allDecisionTables = new HashSet<>(modeller.getAvailableDecisionTables());
 
-        final ParameterizedCommand<String> saveCommand = (commitMessage) -> {
+        final ParameterizedCommand<String> saveCommand = commitMessage -> {
             editorView.showSaving();
             saveGraphLatch = new SaveGraphLatch(allDecisionTables.size(),
                                                 commitMessage);
             if (allDecisionTables.isEmpty()) {
                 saveGraphLatch.saveDocumentGraph();
             } else {
-                allDecisionTables.stream().forEach((dtPresenter) -> {
+                allDecisionTables.stream().forEach(dtPresenter -> {
                     saveGraphLatch.saveDocumentGraphEntry(dtPresenter);
                     saveInProgressEvent.fire(new SaveInProgressEvent(dtPresenter.getLatestPath()));
                 });
@@ -833,18 +830,18 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
         path.onRename(this::onRename);
         path.onDelete(this::onDelete);
 
-        path.onConcurrentUpdate((info) -> concurrentUpdateSessionInfo = info);
+        path.onConcurrentUpdate(info -> concurrentUpdateSessionInfo = info);
 
-        path.onConcurrentRename((info) -> newConcurrentRename(info.getSource(),
-                                                              info.getTarget(),
-                                                              info.getIdentity(),
-                                                              () -> enableMenus(false),
-                                                              this::reload).show());
+        path.onConcurrentRename(info -> newConcurrentRename(info.getSource(),
+                                                            info.getTarget(),
+                                                            info.getIdentity(),
+                                                            () -> enableMenus(false),
+                                                            this::reload).show());
 
-        path.onConcurrentDelete((info) -> newConcurrentDelete(info.getPath(),
-                                                              info.getIdentity(),
-                                                              () -> enableMenus(false),
-                                                              () -> placeManager.closePlace(editorPlaceRequest)).show());
+        path.onConcurrentDelete(info -> newConcurrentDelete(info.getPath(),
+                                                            info.getIdentity(),
+                                                            () -> enableMenus(false),
+                                                            () -> placeManager.closePlace(editorPlaceRequest)).show());
     }
 
     void onDelete() {
@@ -885,6 +882,7 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
         return !this.access.isEditable();
     }
 
+    @Override
     void onUpdatedLockStatusEvent(final @Observes UpdatedLockStatusEvent event) {
 
         super.onUpdatedLockStatusEvent(event);
@@ -961,7 +959,7 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
                                                                                                                  final PlaceRequest placeRequest,
                                                                                                                  final Double x,
                                                                                                                  final Double y) {
-            return (content) -> {
+            return rcContent -> {
                 //Path is set to null when the Editor is closed (which can happen before async calls complete).
                 if (path == null) {
                     return;
@@ -970,7 +968,7 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
                 //Add Decision Table to modeller
                 final GuidedDecisionTableView.Presenter dtPresenter = modeller.addDecisionTable(path,
                                                                                                 placeRequest,
-                                                                                                content,
+                                                                                                rcContent,
                                                                                                 placeRequest.getParameter("readOnly",
                                                                                                                           null) != null,
                                                                                                 x,
@@ -992,7 +990,7 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
 
         private RemoteCallback<GuidedDecisionTableEditorContent> getLoadContentSuccessCallback(final ObservablePath path,
                                                                                                final PlaceRequest placeRequest) {
-            return (content) -> {
+            return rcContent -> {
                 //Path is set to null when the Editor is closed (which can happen before async calls complete).
                 if (path == null) {
                     return;
@@ -1001,7 +999,7 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
                 //Add Decision Table to modeller
                 final GuidedDecisionTableView.Presenter dtPresenter = modeller.addDecisionTable(path,
                                                                                                 placeRequest,
-                                                                                                content,
+                                                                                                rcContent,
                                                                                                 placeRequest.getParameter("readOnly",
                                                                                                                           null) != null,
                                                                                                 null,
@@ -1016,7 +1014,7 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
 
         private DefaultErrorCallback getLoadErrorCallback() {
             final CommandDrivenErrorCallback wrapped = getNoSuchFileExceptionErrorCallback();
-            final DefaultErrorCallback callback = new DefaultErrorCallback() {
+            return new DefaultErrorCallback() {
                 @Override
                 public boolean error(final Message message,
                                      final Throwable throwable) {
@@ -1025,7 +1023,6 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
                                          throwable);
                 }
             };
-            return callback;
         }
     }
 
@@ -1050,15 +1047,12 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
 
         private void saveDocumentGraph(final Path editorPath) {
             final GuidedDecisionTableEditorGraphModel model = buildModelFromEditor();
-            graphService.call(new RemoteCallback<Path>() {
-                                  @Override
-                                  public void callback(final Path path) {
-                                      editorView.hideBusyIndicator();
-                                      versionRecordManager.reloadVersions(path);
-                                      originalGraphHash = model.hashCode();
-                                      concurrentUpdateSessionInfo = null;
-                                      notificationEvent.fire(new NotificationEvent(CommonConstants.INSTANCE.ItemSavedSuccessfully()));
-                                  }
+            graphService.call((RemoteCallback<Path>) path -> {
+                                  editorView.hideBusyIndicator();
+                                  versionRecordManager.reloadVersions(path);
+                                  originalGraphHash = model.hashCode();
+                                  concurrentUpdateSessionInfo = null;
+                                  notificationEvent.fire(new NotificationEvent(CommonConstants.INSTANCE.ItemSavedSuccessfully()));
                               },
                               new HasBusyIndicatorDefaultErrorCallback(view)).save(editorPath,
                                                                                    model,
@@ -1081,7 +1075,7 @@ public class GuidedDecisionTableGraphEditorPresenter extends BaseGuidedDecisionT
 
         private RemoteCallback<Path> getSaveSuccessCallback(final GuidedDecisionTableView.Presenter document,
                                                             final int currentHashCode) {
-            return (path) -> {
+            return path -> {
                 document.setConcurrentUpdateSessionInfo(null);
                 document.setOriginalHashCode(currentHashCode);
                 saveDocumentGraph();

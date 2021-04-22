@@ -66,8 +66,7 @@ public class AttributeColumnPageView implements IsElement,
                                 .filter(attribute -> Objects.equals(attribute.getAttributeName(),
                                                                     attributeList.getSelectedItemText()))
                                 .findFirst()
-                                .map(attribute -> attribute.getAttributeName())
-                                .get());
+                                .map(Attribute::getAttributeName).orElse("")); //TODO default value, exception or do not call page.selectItem?
 
         attributeDescription.setAttribute("data-enabled",
                                           attributeList.getSelectedValue());

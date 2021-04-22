@@ -284,7 +284,7 @@ public class GuidedDecisionTableEditorPresenter extends BaseGuidedDecisionTableE
 
     protected RemoteCallback<GuidedDecisionTableEditorContent> getLoadContentSuccessCallback(final ObservablePath path,
                                                                                              final PlaceRequest placeRequest) {
-        return (content) -> {
+        return content -> {
             //Path is set to null when the Editor is closed (which can happen before async calls complete).
             if (path == null) {
                 return;
@@ -345,8 +345,9 @@ public class GuidedDecisionTableEditorPresenter extends BaseGuidedDecisionTableE
 
     @Override
     public Promise<Void> makeMenuBar() {
-        if (workbenchContext.getActiveWorkspaceProject().isPresent()) {
-            final WorkspaceProject activeProject = workbenchContext.getActiveWorkspaceProject().get();
+        Optional<WorkspaceProject> activeWorkspaceProjectOpt = workbenchContext.getActiveWorkspaceProject();
+        if (activeWorkspaceProjectOpt.isPresent()) {
+            final WorkspaceProject activeProject = activeWorkspaceProjectOpt.get();
             return projectController.canUpdateProject(activeProject).then(canUpdateProject -> {
                 if (canUpdateProject) {
                     getFileMenuBuilder()
@@ -383,7 +384,7 @@ public class GuidedDecisionTableEditorPresenter extends BaseGuidedDecisionTableE
         if (convertMenuItem == null) {
 
             convertMenuItem = MenuFactory.newTopLevelMenu(GuidedDecisionTableConstants.INSTANCE.Convert())
-                    .respondsWith(() -> onConvert())
+                    .respondsWith(this::onConvert)
                     .endMenu()
                     .build()
                     .getItems()
@@ -474,6 +475,7 @@ public class GuidedDecisionTableEditorPresenter extends BaseGuidedDecisionTableE
         scheduleClosure(() -> placeManager.forceClosePlace(editorPlaceRequest));
     }
 
+    @Override
     void onUpdatedLockStatusEvent(final @Observes UpdatedLockStatusEvent event) {
         super.onUpdatedLockStatusEvent(event);
     }

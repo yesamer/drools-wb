@@ -48,10 +48,6 @@ public class SingleFieldConstraintOperatorSelector {
 
     private FactPatternWidget parent;
 
-    private HorizontalPanel placeholderForDropdown;
-
-    private AsyncPackageDataModelOracle oracle;
-
     private Function<SingleFieldConstraint, ConstraintValueEditor> constraintValueEditorProducer;
 
     public void configure(final SingleFieldConstraint constraint,
@@ -68,11 +64,9 @@ public class SingleFieldConstraintOperatorSelector {
         this.constraintValueEditor = constraintValueEditor;
         this.constraintValueEditorProducer = constraintValueEditorProducer;
         this.parent = parent;
-        this.placeholderForDropdown = placeholderForDropdown;
         this.constraintValueEditorWrapper = constraintValueEditorWrapper;
         this.constraintValueEditorRowIndex = constraintValueEditorRowIndex;
         this.constraintValueEditorColumnIndex = constraintValueEditorColumnIndex;
-        this.oracle = oracle;
 
         String fieldName;
         String factType;
@@ -101,7 +95,7 @@ public class SingleFieldConstraintOperatorSelector {
 
                                           placeholderForDropdown.add(operatorsDropdown);
 
-                                          operatorsDropdown.addValueChangeHandler(event -> onDropDownValueChanged(event));
+                                          operatorsDropdown.addValueChangeHandler(this::onDropDownValueChanged);
                                       });
     }
 
@@ -129,19 +123,14 @@ public class SingleFieldConstraintOperatorSelector {
         }
 
         if (constraintValueEditorWrapper != null) {
-            if (isWidgetForValueNeeded(selectedText)) {
-                constraintValueEditorWrapper.getWidget(constraintValueEditorRowIndex,
-                                                       constraintValueEditorColumnIndex).setVisible(true);
-            } else {
-                constraintValueEditorWrapper.getWidget(constraintValueEditorRowIndex,
-                                                       constraintValueEditorColumnIndex).setVisible(false);
-            }
+            constraintValueEditorWrapper.getWidget(constraintValueEditorRowIndex,
+                                                   constraintValueEditorColumnIndex).setVisible(isWidgetForValueNeeded(selectedText));
         }
 
         //If new operator requires a comma separated list and old did not, or vice-versa
         //we need to redraw the ConstraintValueEditor for the constraint
         if (OperatorsOracle.operatorRequiresList(selected) != OperatorsOracle.operatorRequiresList(originalOperator)) {
-            if (OperatorsOracle.operatorRequiresList(selected) == false) {
+            if (!OperatorsOracle.operatorRequiresList(selected)) {
                 final String[] oldValueList = constraint.getValue().split(",");
                 if (oldValueList.length > 0) {
                     constraint.setValue(oldValueList[0]);
@@ -149,9 +138,11 @@ public class SingleFieldConstraintOperatorSelector {
             }
 
             //Redraw ConstraintValueEditor
-            constraintValueEditorWrapper.setWidget(constraintValueEditorRowIndex,
-                                                   constraintValueEditorColumnIndex,
-                                                   constraintValueEditorProducer.apply(constraint));
+            if (constraintValueEditorWrapper != null) {
+                constraintValueEditorWrapper.setWidget(constraintValueEditorRowIndex,
+                                                       constraintValueEditorColumnIndex,
+                                                       constraintValueEditorProducer.apply(constraint));
+            }
         }
     }
 
