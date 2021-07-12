@@ -42,6 +42,9 @@ public class PropertyViewImpl implements PropertyView {
     @DataField("propertyValueInput")
     protected InputElement propertyValueInput = Document.get().createTextInputElement();
 
+    @DataField("manageCollectionButton")
+    protected InputElement manageCollectionButton = Document.get().createButtonInputElement();
+
     @Override
     public LIElement getPropertyFields() {
         return propertyFields;
@@ -57,13 +60,24 @@ public class PropertyViewImpl implements PropertyView {
         return propertyValueSpan;
     }
 
+    @Override
     public InputElement getPropertyValueInput() {
         return propertyValueInput;
+    }
+
+    @Override
+    public InputElement getManageCollectionButton() {
+        return manageCollectionButton;
     }
 
     @EventHandler("propertyValueInput")
     public void onPropertyValueInputClickEvent(ClickEvent clickEvent) {
         propertyValueInput.focus();
+        clickEvent.stopPropagation();
+    }
+
+    @EventHandler("manageCollectionButton")
+    public void onManageCollectionButton(ClickEvent clickEvent) {
         clickEvent.stopPropagation();
     }
 }

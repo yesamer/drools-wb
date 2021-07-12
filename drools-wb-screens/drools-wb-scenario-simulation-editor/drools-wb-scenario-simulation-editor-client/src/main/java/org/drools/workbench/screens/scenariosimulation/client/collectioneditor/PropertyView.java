@@ -31,7 +31,7 @@ public interface PropertyView {
          * @return
          * @throws Exception if the given property value is not found
          */
-        String getPropertyValue(String propertyName) throws Exception;
+        String getPropertyValue(String propertyName);
 
         /**
          * Show the <code>InputElement</code>s to edit the properties shown at the given <b>baseNodeId</b> and hide their <code>SpanElement</code>s
@@ -112,4 +112,6 @@ public interface PropertyView {
      * @return the <code>InputElement</code> editing the property' <b>value</b>
      */
     InputElement getPropertyValueInput();
+
+    InputElement getManageCollectionButton();
 }

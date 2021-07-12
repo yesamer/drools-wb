@@ -46,7 +46,7 @@ public class PropertyPresenter implements PropertyView.Presenter {
     protected Map<String, List<PropertyView>> propertyViewMap = new HashMap<>();
 
     @Override
-    public String getPropertyValue(String propertyName) throws Exception {
+    public String getPropertyValue(String propertyName) {
         if (propertySpanElementMap.containsKey(propertyName)) {
             return propertySpanElementMap.get(propertyName).getInnerText();
         } else {
@@ -96,10 +96,12 @@ public class PropertyPresenter implements PropertyView.Presenter {
         setSpanAttributeAttributes(propertyName, propertyValue, "propertyValue" + hashedPropertyName, propertyValueSpan);
         propertySpanElementMap.put(propertyName, propertyValueSpan);
         final InputElement propertyValueInput = propertyEditorView.getPropertyValueInput();
+        final InputElement manageCollectionButton = propertyEditorView.getManageCollectionButton();
         propertyValueInput.setAttribute("placeholder", hashedPropertyName);
         propertyValueInput.setAttribute("data-field", "propertyValue" + hashedPropertyName);
         propertyValueInput.setDisabled(true);
         propertyValueInput.getStyle().setDisplay(Style.Display.NONE);
+        manageCollectionButton.getStyle().setDisplay(Style.Display.NONE);
         final LIElement propertyFields = propertyEditorView.getPropertyFields();
         propertyFields.setAttribute("data-field", "propertyFields" + hashedPropertyName);
         if (propertyViewMap.containsKey(itemId)) {
